@@ -1,0 +1,37 @@
+[Unit]
+Description=phone MCP bridge (TCP/TLS:9444 for phone + streamable-http:9500 for MCP client)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcp
+Group=mcp
+WorkingDirectory=/opt/mcp_for_android/ai_mcp_server
+EnvironmentFile=-/etc/mcp_for_android.env
+# 兜底：即使 EnvironmentFile 没设，也用占位空 token
+Environment=MCP_HOST=0.0.0.0
+Environment=MCP_TCP_PORT=9444
+Environment=MCP_CERT_FILE=certs/server.crt
+Environment=MCP_KEY_FILE=certs/server.key
+# systemd 下没有 stdio MCP 客户端，必须走 streamable-http
+Environment=BRIDGE_TRANSPORT=streamable-http
+Environment=BRIDGE_HOST=0.0.0.0
+Environment=BRIDGE_PORT=9500
+ExecStart=/opt/mcp_for_android/ai_mcp_server/.venv/bin/python bridge_mcp.py
+Restart=always
+RestartSec=5
+# 资源限制（防 OOM）
+MemoryMax=512M
+TasksMax=64
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# /opt/mcp_for_android/ai_mcp_server 需可写（若要写日志/缓存），可放开
+ReadWritePaths=/opt/mcp_for_android/ai_mcp_server
+
+[Install]
+WantedBy=multi-user.target

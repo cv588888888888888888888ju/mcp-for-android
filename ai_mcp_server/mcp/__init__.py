@@ -1,0 +1,1 @@
+# MCP 服务器内部包（防被 site-packages 的 MCP Python SDK 命名空间劫持）

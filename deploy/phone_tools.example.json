@@ -1,0 +1,35 @@
+{
+  "_说明": "PHONE_TOOLS_JSON 外部工具配置示例。顶层以 tools 注册 MCP tools；params 的 name/type/description/required 生成 MCP 输入 schema。",
+  "_格式说明": [
+    "每一步可以是 {adb_shell: 命令模板}，也可以是 {action: 内部动作名, params: {...}}；各步骤严格顺序执行。",
+    "命令和对象字符串支持 {参数名} 占位符；可选参数缺失时替换为空字符串。"
+  ],
+  "tools": [
+    {
+      "name": "set_reminder",
+      "description": "在手机上设置提醒（打开系统闹钟新建界面）",
+      "params": [
+        {
+          "name": "time",
+          "type": "string",
+          "description": "提醒时间，格式 HH:MM",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "description": "提醒标题",
+          "required": false
+        }
+      ],
+      "steps": [
+        {
+          "adb_shell": "am start -a android.intent.action.SET_ALARM --el android.intent.extra.alarm.MESSAGE 0 -e android.intent.extra.alarm.MESSAGE '{title}'"
+        },
+        {
+          "adb_shell": "input tap 500 1200"
+        }
+      ]
+    }
+  ]
+}

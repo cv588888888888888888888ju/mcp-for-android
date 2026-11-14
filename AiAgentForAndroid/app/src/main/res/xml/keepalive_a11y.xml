@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 保活 + UI 树来源。canRetrieveWindowContent=true 让 get_ui_state / click(text=...) 读进程内节点树，
+     不再依赖 uiautomator dump（实测 2.77s/次）。事件只订阅窗口切换，不订阅内容变化（树按需拉取）。 -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowsChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:canPerformGestures="true"
+    android:description="@string/keepalive_a11y_desc"
+    android:notificationTimeout="100" />

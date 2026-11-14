@@ -1,0 +1,49 @@
+NOTICE — third-party code and licensing
+
+1. Upstream prototype
+   AiAgentForAndroid/ and the Python server skeleton (mcp/, app_learn/)
+   derive from https://github.com/lmee/mcp_for_android.
+   Its README states "该项目采用MIT许可证" (MIT), but the repository contains no
+   LICENSE file, so GitHub's license detection reports none. We rely on that
+   declared MIT grant and reproduce the attribution here; the upstream
+   copyright notice was never published, so we credit the repository itself.
+
+2. This project's contributions
+   TLS + device-token security layer (MCPTls.java, phone_direct_client.py,
+   MCPListenServer.java), the MCP bridge (bridge_mcp.py), the phone-side
+   script gateway (ScriptEngine.java, ScriptAlarmReceiver.java), the
+   notification/message hub (hub/), CLI (cli/mcp4android.ps1) and deployment
+   tooling (deploy/) are released under the MIT license (see LICENSE).
+
+3. Third-party dependencies
+   Android:
+     - OkHttp (com.squareup.okhttp3:okhttp)            Apache-2.0
+     - Apache Commons Text                             Apache-2.0
+     - fastjson (com.alibaba:fastjson)                 Apache-2.0
+     - Gson (com.google.code.gson)                     Apache-2.0
+     - Java-WebSocket (org.java-websocket)             MIT
+     - AndroidX appcompat / material / constraintlayout Apache-2.0
+     - Shizuku (dev.rikka.shizuku:api, :provider)      Apache-2.0
+     - Gradle Wrapper                                  Apache-2.0
+   Python:
+     - mcp (Model Context Protocol Python SDK)         MIT
+     - pydantic                                        MIT
+     - uvicorn / starlette                             BSD-3-Clause
+   Tunnel binaries:
+     - libwgtcp.so  original code of this project            MIT
+     - libwgproxy.so built from wireproxy v1.1.3
+                     (github.com/windtf/wireproxy)           ISC
+                     Copyright (c) 2026 Tsz Fung Wong <im@windtfw.com>
+     libwgproxy.so also embeds the Go modules listed in
+     AiAgentForAndroid/app/src/main/assets/THIRD_PARTY_LICENSES.txt,
+     which ships inside the -full APK (assets/THIRD_PARTY_LICENSES.txt).
+     The binary sources are not part of this repository; only the -full
+     release asset carries the compiled .so files.
+
+4. Scope of this repository's MIT license
+   MIT covers the code authored here (see section 2) plus the upstream-derived
+   files, to the extent the upstream MIT declaration is valid. It does NOT
+   cover libwgproxy.so, which is distributed under the ISC license of
+   wireproxy v1.1.3 and is bundled only in the -full release APK together
+   with its license text (assets/THIRD_PARTY_LICENSES.txt). Application
+   knowledge dumps, certificates and device keys are not part of the repository.

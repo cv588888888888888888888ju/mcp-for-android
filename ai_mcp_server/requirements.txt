@@ -1,0 +1,7 @@
+# MCP：版本必须 pin；bridge 用的是 streamable-http 与 structured_output 参数
+mcp==1.29.0
+# bridge 直接 import pydantic 做参数校验（同时是 mcp SDK 的传递依赖，显式钉住）
+pydantic>=2.0
+# streamable-http 传输的运行时依赖
+uvicorn>=0.27
+starlette>=0.36

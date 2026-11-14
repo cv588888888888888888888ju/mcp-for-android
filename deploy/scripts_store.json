@@ -1,0 +1,27 @@
+{
+  "scripts": [
+    {
+      "name": "morning_report",
+      "description": "早上播报",
+      "schedule": {
+        "time": "08:00",
+        "enabled": true
+      },
+      "steps": [
+        {
+          "shell": "echo 早上好"
+        },
+        {
+          "speak": "早上好，新的一天开始了"
+        },
+        {
+          "notify_pc": {
+            "title": "手机脚本提醒",
+            "text": "morning_report 已执行完成"
+          }
+        }
+      ]
+    }
+  ],
+  "logs": []
+}

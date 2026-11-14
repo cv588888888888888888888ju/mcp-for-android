@@ -1,0 +1,40 @@
+# ---- secrets: never commit ----
+ai_mcp_server/certs/
+AiAgentForAndroid/app/src/main/assets/adbkey
+AiAgentForAndroid/app/src/main/assets/adbkey_wifi
+AiAgentForAndroid/app/src/main/assets/adbkey_wifi.pub
+AiAgentForAndroid/app/src/main/assets/adbkey_wifi_cert.pem
+AiAgentForAndroid/app/src/main/res/raw/phone_keystore.p12
+AiAgentForAndroid/app/src/main/res/raw/server_ca.pem
+**/tts_key.txt
+ai_mcp_server/tts_service.py
+
+# ---- python ----
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# ---- android ----
+.idea/
+*.iml
+.gradle/
+local.properties
+/build
+AiAgentForAndroid/build/
+AiAgentForAndroid/app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ---- runtime data (learned on-device, never publish) ----
+ai_mcp_server/app_knowledge/
+ai_mcp_server/data/
+
+# ---- misc ----
+*.log
+*.tmp
+
+# runtime artifacts
+ai_mcp_server/*.db
+ai_mcp_server/*.db-journal
