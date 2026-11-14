@@ -1,5 +1,7 @@
 # mcp-for-android — Turn Your Android Phone into an MCP Capability Provider
 
+**English** | [简体中文](README.zh-CN.md)
+
 > **AI-assisted project**: This codebase was developed with AI coding agents (Hermes Agent + OpenAI Codex). The phone-side gateway engine, adb protocol client, and MCP bridge were co-authored with AI assistance and verified end-to-end on real devices.
 
 Control your Android phone from any MCP client (Claude, Hermes, custom agents) — launch apps, tap/type/swipe, take screenshots, read notifications, run shell commands, **speak via TTS**, and run **scheduled scripts on the phone itself** (works offline, like a mini-gateway).
@@ -9,40 +11,47 @@ Control your Android phone from any MCP client (Claude, Hermes, custom agents) �
 ## Architecture
 
 ```
-┌──────────────┐  MCP streamable-http   ┌──────────────────────────────────┐
-│  MCP Client  │ ─────────────────────▶ │ 个人服务器 192.0.2.10:9500          │
-│ (Hermes/DSH) │ ◀───────────────────── │ bridge_mcp.py + hub_server.py     │
-└──────────────┘                        │ （控制面 + 最终存储）             │
-                                        └───────────▲──────────────────────┘
-                                                    │ TLS 9444 + device token
-                                        ┌───────────┴──────────────────────┐
-                                        │ ECS 192.0.2.1:9444                 │
-                                        │ phone-relay：socat 纯 L4 转发      │
-                                        │ （不解密、不落库、只此一条通道）    │
-                                        └───────────▲──────────────────────┘
-                                                    │ 内置用户态 WG 隧道（UDP 51820）
-                                        ┌───────────┴──────────────────────┐
-                                        │ 手机 com.jxev.ai（后台服务，无 UI）│
-                                        │ • 内置用户态 WireGuard 隧道       │
-                                        │ • 三条可互换执行通道              │
-                                        │ • 消息中枢采集 + 脚本引擎 + TTS   │
-                                        └──────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  MCP client (Hermes / DSH / any MCP client)         │
+└──────────────────────────┬──────────────────────────┘
+                           │ streamable-http  9500
+                           ▼
+┌──────────────────────────┴──────────────────────────┐
+│  Personal server  192.0.2.10:9500                   │
+│  bridge_mcp.py + hub_server.py                      │
+│  (control plane + final storage)                    │
+└──────────────────────────┬──────────────────────────┘
+                           │ TLS 9444 + device token
+                           ▼
+┌──────────────────────────┴──────────────────────────┐
+│  ECS relay  192.0.2.1:9444                          │
+│  phone-relay: socat, L4 only                        │
+│  (no decryption, no storage)                        │
+└──────────────────────────┬──────────────────────────┘
+                           │ built-in user-space WireGuard tunnel (UDP 51820)
+                           ▼
+┌──────────────────────────┴──────────────────────────┐
+│  Phone  com.jxev.ai  (background service, no UI)    │
+│  - built-in user-space WireGuard tunnel             │
+│  - three interchangeable execution paths            │
+│  - notification hub + script engine + TTS           │
+└─────────────────────────────────────────────────────┘
 ```
 
-- **手机 = 执行端 + 采集端**：自己拉用户态 WG 隧道（不占系统 VPN 槽、不 root），长连接只往外连，没有任何入站端口。
-- **个人服务器 = 控制面 + 最终存储**；**ECS 只是流量中转**（一条 9444）。
-- **MCP 客户端**只连服务器 `9500`，不直接碰手机。
+- **Phone = execution and collection side.** It dials out its own user-space WireGuard tunnel (no system VPN slot, no root). The long-lived connection is outbound only — the phone exposes no inbound port at all.
+- **Personal server = control plane and final storage.** **The ECS box is only a traffic relay** (a single TCP 9444).
+- **MCP clients** talk to the server on `9500` only; they never touch the phone directly.
 
-文档地图：
+Documentation map (the `docs/` files are currently written in Chinese):
 
-| 文档 | 内容 |
+| Document | Contents |
 |---|---|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 拓扑、组件职责、端口、数据面、失败语义 |
-| [docs/INTERFACE.md](docs/INTERFACE.md) | MCP 工具目录、`device_action` 动作表、socket 协议、中枢数据模型 |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | 构建/安装、配置键、三节点部署、故障矩阵、备份 |
-| [docs/CHANNELS.md](docs/CHANNELS.md) | 三条执行通道的前提、坑、诊断 |
-| [docs/NOTIFICATION_HUB.md](docs/NOTIFICATION_HUB.md) | 通知中枢链路与 v2 通用消息模型 |
-| [docs/WG_DIRECT_MODE.md](docs/WG_DIRECT_MODE.md) | WG 直连拨号模式（bridge 主动拨手机） |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Topology, component responsibilities, ports, data plane, failure semantics |
+| [docs/INTERFACE.md](docs/INTERFACE.md) | MCP tool catalog, `device_action` action table, socket protocol, hub data model |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | Build/install, configuration keys, three-node deployment, failure matrix, backups |
+| [docs/CHANNELS.md](docs/CHANNELS.md) | Preconditions, pitfalls and diagnostics for the three execution paths |
+| [docs/NOTIFICATION_HUB.md](docs/NOTIFICATION_HUB.md) | Notification hub pipeline and the v2 generic message model |
+| [docs/WG_DIRECT_MODE.md](docs/WG_DIRECT_MODE.md) | WireGuard direct-dial mode (the bridge dials the phone) |
 
 ## Network options
 
@@ -88,21 +97,20 @@ Run the bridge on a VPS with a public IP, allow inbound TCP 9444, and set the ph
 
 Status: the relay side is prepared and tested (`socat TCP-LISTEN:9445,fork,reuseaddr TCP:<bridge>:9444` listens), but the end-to-end phone test is still blocked on the cloud security group — the phone's mobile-data connection to the public port times out (dropped, not refused). Open the port in the console, then repeat the LAN steps.
 
-
 ## Features
 
-- 🔌 **MCP Bridge**: streamable-http (FastMCP)，35 个工具（操作/屏幕/通知/消息中枢/脚本/TTS）
+- 🔌 **MCP bridge**: streamable-http (FastMCP), 35 tools (actions / screen / notifications / message hub / scripts / TTS)
 - 🔐 **TLS + device token** on the phone socket (self-signed CA; fail-closed)
 - 🕳️ **Built-in user-space WireGuard tunnel** in the app: outbound TLS rides the tunnel, no system VPN slot, no root
-- 🚪 **Three interchangeable execution paths**: local `adb` 5555 / wireless-debugging TLS / Shizuku (auto fallback)
-- 🔔 **Message hub v2**: 任意来源的「带标签文本消息 + 附件」统一入库（手机通知只是 `source=phone` 的一种）；服务器是最终存储，桌面 info-hub 只做镜像
-- 🤖 **Pure background service** on phone: no UI. Two interchangeable paths — an **in-process accessibility tree** (needs the accessibility service enabled, no adb at all) or **local adb** (input/screencap/dumpsys/monkey)
+- 🚪 **Three interchangeable execution paths**: local `adb` 5555 / wireless-debugging TLS / Shizuku (automatic fallback)
+- 🔔 **Message hub v2**: a "tagged text message + attachment" from any source lands in one store (phone notifications are just one source, `source=phone`); the server is the final store and the desktop info-hub is only a mirror
+- 🤖 **Pure background service** on the phone: no UI. Two interchangeable paths — an **in-process accessibility tree** (needs the accessibility service enabled, no adb at all) or **local adb** (input / screencap / dumpsys / monkey)
 - ⚡ **Accessibility tree**: `get_ui_state` returns `source=ax` with ~12 ms latency (uiautomator dump fallback: ~2.8 s)
 - 🎯 **Deterministic click contract**: every `click` reports `found` / `actionable` / `tapped` / `verified` plus a `note` — a tap that changes nothing returns `verified=false` instead of pretending success
-- 🖼️ **[experimental] Visual element matching**: register a template image of any icon/canvas button, then `element_register` / `element_find` / `element_click` find and tap it by pixels (NCC pyramid match, ambiguity guard). Off by default — bridge must run with `MCP_EXPERIMENTAL=1`, which adds these three tools on top of the 35
-- 🕐 **Phone-side script gateway**: `script_create/list/run/delete/schedule` — daily AlarmManager triggers, shell/speak/notify_pc steps
-- 🗣️ **TTS**: SiliconFlow CosyVoice2 (phone plays wav via MediaPlayer, system TTS fallback)
-- 💻 **CLI** (`cli/mcp4android.ps1`): bilingual (中文/English) guided install/pair/tcpip/config/restart/status/notify
+- 🖼️ **[experimental] Visual element matching**: register a template image of any icon or canvas button, then `element_register` / `element_find` / `element_click` find and tap it by pixels (NCC pyramid match, ambiguity guard). Off by default — the bridge must run with `MCP_EXPERIMENTAL=1`, which adds these three tools on top of the 35
+- 🕐 **Phone-side script gateway**: `script_create` / `script_list` / `script_run` / `script_delete` / `script_schedule` — daily AlarmManager triggers, shell / speak / notify_pc steps
+- 🗣️ **TTS**: SiliconFlow CosyVoice2 (the phone plays the wav via MediaPlayer, with system TTS as fallback)
+- 💻 **CLI** (`cli/mcp4android.ps1`): bilingual (Chinese / English) guided install / pair / tcpip / config / restart / status / notify
 - 🧩 **Optional app-learning module** (`ai_mcp_server/app_learn/`): imported lazily; if the directory is removed the server still starts and only the learning tools report unavailable
 
 ## Prebuilt APKs
@@ -157,24 +165,24 @@ adb tcpip 5555
 > **Prebuilt APKs**: each release attaches two signed variants — `-lite` (no tunnel binaries) and
 > `-full` (bundles the prebuilt `libwgproxy.so` / `libwgtcp.so`, so the built-in tunnel works out of the box).
 
-### 3. Run the Bridge（个人服务器）
+### 3. Run the bridge (on your personal server)
 
 ```bash
 cd ai_mcp_server
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # 含 mcp==1.29.0
-export MCP_DEVICE_TOKEN=$(openssl rand -hex 16)      # 与手机端 config 里的一致；空=不校验
-export MCP_HOST=192.0.2.10                            # 手机连进来的地址（默认 127.0.0.1，只能本机连）
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt   # pins mcp==1.29.0
+export MCP_DEVICE_TOKEN=$(openssl rand -hex 16)      # must match the phone config; empty = no auth
+export MCP_HOST=192.0.2.10                           # address the phone dials (default 127.0.0.1 = local only)
 export MCP_CERT_FILE=certs/server.crt
 export MCP_KEY_FILE=certs/server.key
-# 默认传输是 stdio；要让 MCP 客户端走网络，必须显式开 streamable-http
+# the default transport is stdio; network clients need streamable-http explicitly
 export BRIDGE_TRANSPORT=streamable-http
 export BRIDGE_HOST=0.0.0.0
 export BRIDGE_PORT=9500
 .venv/bin/python bridge_mcp.py
-# 手机 TLS: <MCP_HOST>:9444；MCP 客户端: http://<BRIDGE_HOST>:9500/mcp
+# phone TLS endpoint: <MCP_HOST>:9444 ; MCP client: http://<BRIDGE_HOST>:9500/mcp
 ```
 
-ECS 侧只跑一条 L4 转发（见 `docs/OPERATIONS.md` §4.1），不跑 bridge。
+The ECS side runs a single L4 relay (see `docs/OPERATIONS.md` §4.1); it does not run the bridge.
 
 ### 4. Configure the phone
 
@@ -193,33 +201,28 @@ hermes mcp add phone --url http://<bridge>:9500/mcp
 ## Security notes
 
 - **No certificates are committed.** Run `gen_cert.py` and keep `*.key` out of git.
-- Phone socket requires a **device token** (`MCP_DEVICE_TOKEN`); the PC notification endpoint requires a token too.
+- The phone socket requires a **device token** (`MCP_DEVICE_TOKEN`); the PC notification endpoint requires a token too.
 - `adbkey` (private), `adbkey_wifi*` and TTS keys are **gitignored** — never commit secrets.
-- 隧道的 WireGuard 私钥存放在 SharedPreferences（`tunnel_private_key`），不写进 APK。
-- Phone TTS key: `app/src/main/assets/tts_key.txt` (gitignored) or rely on system TTS fallback.
-- Default endpoints in code are placeholders (`203.0.113.10` = RFC 5737 TEST-NET-3); replace with your own.
+- The tunnel's WireGuard private key lives in SharedPreferences (`tunnel_private_key`); it is never written into the APK.
+- Phone TTS key: `app/src/main/assets/tts_key.txt` (gitignored) or rely on the system TTS fallback.
+- Default endpoints in code are placeholders (`203.0.113.10` = RFC 5737 TEST-NET-3); replace them with your own.
 
 ## Repository layout
 
 ```
-ai_mcp_server/        MCP Bridge (FastMCP, stdio + HTTP, TLS phone socket)
-AiAgentForAndroid/    Android app (foreground service, adb executor, script gateway, TTS)
+ai_mcp_server/        MCP bridge (FastMCP, stdio + HTTP, TLS phone socket)
+AiAgentForAndroid/    Android app (background service, adb executor, script gateway, TTS)
 cli/                  mcp4android.ps1 (bilingual install/config CLI)
 pc_notify/            Windows toast notification poller
-deploy/               ECS systemd + config examples
-docs/                 ARCHITECTURE.md、INTERFACE.md、OPERATIONS.md、CHANNELS.md、NOTIFICATION_HUB.md、WG_DIRECT_MODE.md
+deploy/               ECS systemd units + config examples
+docs/                 ARCHITECTURE.md, INTERFACE.md, OPERATIONS.md, CHANNELS.md, NOTIFICATION_HUB.md, WG_DIRECT_MODE.md
 ```
 
 ## License
 
-本仓库以 **MIT** 许可发布（见 [LICENSE](LICENSE)）。
-`AiAgentForAndroid/` 及其服务端原型来自 [lmee/mcp_for_android](https://github.com/lmee/mcp_for_android)，
-该仓库 README 声明 MIT（但仓库内无 LICENSE 文件）—— 来源与第三方依赖详见 [NOTICE](NOTICE)。
+Released under the **MIT** license (see [LICENSE](LICENSE)).
+`AiAgentForAndroid/` and its server-side prototype come from [lmee/mcp_for_android](https://github.com/lmee/mcp_for_android), whose README declares MIT (the repository itself ships no LICENSE file) — see [NOTICE](NOTICE) for provenance and third-party dependencies.
 
-**full 版 APK 额外打包了隧道二进制**：`libwgtcp.so`（本项目原创，MIT）与 `libwgproxy.so`
-（由 [wireproxy](https://github.com/windtf/wireproxy) v1.1.3 构建，**ISC** 许可，
-Copyright (c) 2026 Tsz Fung Wong）。ISC 要求随二进制保留版权与许可声明，因此 full APK 内
-带 `assets/THIRD_PARTY_LICENSES.txt`（wireproxy 及 14 个 Go 依赖的许可全文）。
-仓库本身不含 .so，只有 Release 的 full asset 带；lite 版不含任何隧道二进制。
+**The `full` APK additionally bundles the tunnel binaries**: `libwgtcp.so` (original to this project, MIT) and `libwgproxy.so` (built from [wireproxy](https://github.com/windtf/wireproxy) v1.1.3, **ISC** license, Copyright (c) 2026 Tsz Fung Wong). ISC requires the copyright and license notice to be retained with the binary, so the full APK ships `assets/THIRD_PARTY_LICENSES.txt` (the full text of the wireproxy license and its 14 Go dependencies). The repository itself contains no `.so` files — only the `full` release asset does; the `lite` variant ships no tunnel binaries.
 
-*Original prototype: [lmee/mcp_for_android](https://github.com/lmee/mcp_for_android). This project adds TLS/token security, MCP bridge, phone-side gateway engine, user-space tunnel integration, and remote-control capabilities.*
+*Original prototype: [lmee/mcp_for_android](https://github.com/lmee/mcp_for_android). This project adds TLS/token security, the MCP bridge, the phone-side gateway engine, user-space tunnel integration, and remote-control capabilities.*

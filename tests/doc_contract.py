@@ -64,12 +64,19 @@ def check_tools():
         fail(f"文档写 {m.group(1)} 个，代码 {len(code_tools)} 个")
     elif m:
         ok(f"文档数量标注 {m.group(1)} 个与代码一致")
-    readme = read(os.path.join(ROOT, "README.md"))
-    rm = re.search(r"(\d+) 个工具", readme)
-    if rm and int(rm.group(1)) != len(code_tools):
-        fail(f"README 写 {rm.group(1)} 个工具，代码 {len(code_tools)} 个")
-    elif rm:
-        ok("README 工具数一致")
+    # README 有两份：英文 README.md（"N tools"）与中文 README.zh-CN.md（"N 个工具"），两份都要核
+    for name, pat in (("README.md", r"(\d+) tools"), ("README.zh-CN.md", r"(\d+) 个工具")):
+        path = os.path.join(ROOT, name)
+        if not os.path.exists(path):
+            fail(f"{name} 不存在（中英双份约定）")
+            continue
+        rm = re.search(pat, read(path))
+        if not rm:
+            fail(f"{name} 里找不到工具数标注（期望 {len(code_tools)}）")
+        elif int(rm.group(1)) != len(code_tools):
+            fail(f"{name} 写 {rm.group(1)} 个工具，代码 {len(code_tools)} 个")
+        else:
+            ok(f"{name} 工具数一致（{len(code_tools)}）")
     return code_tools
 
 
